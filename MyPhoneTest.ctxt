@@ -1,6 +1,0 @@
-#BlueJ class context
-comment0.target=MyPhoneTest
-comment0.text=\r\n\ This\ class\ creates\ three\ phones,\ Alex's\ phone,\ Evan's\ phone,\ and\ Bob's\ phone\r\n\ \r\n\ Alex\ will\ use\ the\ phone\ accurately,\ Evan\ will\ use\ the\ phone\ more,\ \r\n\ and\ Bob\ will\ imput\ inaccuarte\ values\ to\ check\ for\ error\ catching\r\n\ \r\n\ Author\:\ Alex\ Porter\r\n\ Version\ 9/2017\r\n
-comment1.params=args
-comment1.target=void\ main(java.lang.String[])
-numComments=2
