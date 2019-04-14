@@ -7,6 +7,9 @@ DROP TABLE WorkOrder CASCADE CONSTRAINTS;
 DROP TABLE maintenanceHistory CASCADE CONSTRAINTS;
 DROP TABLE Resident CASCADE CONSTRAINTS;
 DROP TABLE Parts CASCADE CONSTRAINTs;
+DROP TABLE PartLocations CASCADE CONSTRAINTS;
+DROP TABLE Lives_at CASCADE CONSTRAINTS;
+DROP TABLE AptFloor CASCADE CONSTRAINTS;
 --
 CREATE TABLE Employee (
 eID		INTEGER PRIMARY KEY,
@@ -62,18 +65,24 @@ PRIMARY KEY (aptNum, year)
 );
 --
 CREATE TABLE Parts (
-partType 	VARCHAR(30) PRIMARY KEY,
+partType 	VARCHAR(30),
 quantity 	INTEGER NOT NULL,
-pricePerUnit 	INTEGER NOT NULL
+pricePerUnit 	INTEGER NOT NULL,
+wId		INTEGER NOT NULL,
+PRIMARY KEY (partType, wID),
+--
+CONSTRAINT wIDPART FOREIGN KEY (wId) REFERENCES 
+WorkOrder(wID)
 );
 --
 CREATE TABLE partLocations (
 partDesc	VARCHAR(30) NOT NULL,
+wID 		INTEGER NOT NULL,
 location	VARCHAR(30) NOT NULL,
-PRIMARY KEY (partType, location),
+PRIMARY KEY (partDesc,wID,location),
 --
-CONSTRAINT ICPARTDEP FOREIGN KEY (partDesc) REFERENCES
-Parts(partType)
+CONSTRAINT ICPARTDEP FOREIGN KEY (partDesc,wID) REFERENCES
+Parts (partType,wID)
 );
 --
 --
@@ -82,7 +91,7 @@ Parts(partType)
 /* AptUnit
 	Rooms has a minimum of 2, bedroom and regular room
  	Rent is structured this way:
-         2 - 400 (a month)
+         1-2 - 400 (a month)
          3-4 - 500
          5+  - 700
 **Fulfills 2 attribute 1 row check IC**
@@ -90,8 +99,8 @@ Parts(partType)
 --
 ALTER TABLE AptUnit ADD (
 	CONSTRAINT ICROOMNUM CHECK (rooms > 1),
-	CONSTRAINT ICROOMLOW CHECK (rooms > 2 OR rent = 400),
-	CONSTRAINT ICROOMMID CHECK ((rooms > 2 AND rooms < 5 AND rent=500) OR (rooms <=2 OR rooms >= 5)),
+	CONSTRAINT ICROOMLOW CHECK (rooms <= 2 OR rent > 400),
+	CONSTRAINT ICROOMMID CHECK ((rooms > 2 AND rooms < 5) OR rent <> 500),
 	CONSTRAINT ICROOMHIGH CHECK (rooms < 5 OR rent=700)
 	);
 --
@@ -104,6 +113,7 @@ ALTER TABLE AptFloor ADD
 /* WorkOrder
 	eID is a foreign key
 	Resident ssn is a foreign key
+	? Has dependent entity PartsNeeded 
 */
 ALTER TABLE WorkOrder ADD (
 	CONSTRAINT wempfk FOREIGN KEY (empID) REFERENCES Employee(eID),
@@ -113,9 +123,6 @@ ALTER TABLE WorkOrder ADD (
 /* Resident
 	Every resident that files a report must be over the age of 18
 **Fulfills  IC #2, 1 attribute check**
--Note - As the maintenance crew of the apartment, we are not concerned with the 
-children of the residents. As such, even if a Resident has a child living with them,
-they will not exist in our database.
 */
 ALTER TABLE Resident ADD (
 	CONSTRAINT ICAGE CHECK (age >= 18),
@@ -181,9 +188,10 @@ INSERT INTO WorkORder VALUES (616, '13-OCT-31', NULL, 'circuit failure', 2, 33, 
 SELECT * FROM WorkOrder;
 ----------------------------------------------------------
 --
-INSERT INTO Parts VALUES ('screw',3,1);
-INSERT INTO Parts VALUES ('lightbulb', 20, 5);
-INSERT INTO Parts VALUES ('drain snake', 4, 10);
+INSERT INTO Parts VALUES ('screw',3,1,111);
+INSERT INTO Parts VALUES ('lightbulb', 20, 5,111);
+INSERT INTO Parts VALUES ('drain snake', 4, 10,113);
+
 SELECT * FROM Parts;
 --
 -------------------------------------------------------------
@@ -192,29 +200,6 @@ INSERT INTO maintenanceHistory VALUES (1999,2, 'ant infestation');
 INSERT INTO maintenanceHistory VALUES (1999,3, 'broken clock');
 SELECT * FROM maintenanceHistory;
 --
---------------------------------------------------------------
-INSERT INTO AptFloor VALUES (1, 1);
-INSERT INTO AptFloor VALUES (2, 2);
-INSERT INTO AptFloor VALUES (3, 3);
-SELECT * FROM AptFloor;
---
---------------------------------------------------------------
-COMMIT;
---Testing the ICS
---1 row 2 attributes--
-INSERT INTO AptUnit VALUES (5, 500, 2);
-INSERT INTO AptUnit VALUES (6, 400, 6);
-INSERT INTO AptUnIt VALUES (7, 700, 3);
---
---1 row--
-INSERT INTO Resident VALUES (55,'Albus','Potter','m',8,5);
---
---Foreign Key--
-INSERT INTO Resident VALUES (66,'Alastor','Moody','m',50,12);
-COMMIT;
---
---Primary Key--
-INSERT INTO Employee VALUES (1,'Identity', 'Theif',6163313255);
 SET ECHO OFF
 SPOOL OFF
 --
