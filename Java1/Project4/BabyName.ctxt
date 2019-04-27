@@ -1,0 +1,25 @@
+#BlueJ class context
+comment0.target=BabyName
+comment1.params=n\ g\ count\ year
+comment1.target=BabyName(java.lang.String,\ boolean,\ int,\ int)
+comment10.params=other
+comment10.target=int\ compareTo(java.lang.Object)
+comment11.params=args
+comment11.target=void\ main(java.lang.String[])
+comment2.params=
+comment2.target=boolean\ isFemale()
+comment3.params=
+comment3.target=java.lang.String\ getName()
+comment4.params=
+comment4.target=int\ getCount()
+comment5.params=
+comment5.target=int\ getYear()
+comment6.params=babyName
+comment6.target=void\ setName(java.lang.String)
+comment7.params=count
+comment7.target=void\ setCount(int)
+comment8.params=year
+comment8.target=void\ setYear(int)
+comment9.params=
+comment9.target=java.lang.String\ toString()
+numComments=12
