@@ -1,0 +1,764 @@
+SQL> /*
+SQL> CIS 353 - Database Design Maintenance - Apartment Maintenance
+SQL> Michelle Vu
+SQL> Alex Porter
+SQL> Allison Bickford
+SQL> */
+SQL> --
+SQL> DROP TABLE Employee CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE AptUnit CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE WorkOrder CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE maintenanceHistory CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE Resident CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE Parts CASCADE CONSTRAINTs;
+
+Table dropped.
+
+SQL> DROP TABLE PartLocations CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE Lives_at CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE AptFloor CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> --
+SQL> CREATE TABLE Employee (
+  2  eID	     INTEGER PRIMARY KEY,
+  3  firstName	     VARCHAR(20) NOT NULL,
+  4  lastName	     VARCHAR(20) NOT NULL,
+  5  phoneNum	     INTEGER NOT NULL
+  6  );
+
+Table created.
+
+SQL> --
+SQL> CREATE TABLE AptUnit (
+  2  aptNum	     INTEGER PRIMARY KEY,
+  3  rent		     INTEGER NOT NULL,
+  4  rooms	     INTEGER NOT NULL,
+  5  floor	     INTEGER NOT NULL
+  6  );
+
+Table created.
+
+SQL> --
+SQL> CREATE TABLE AptFloor (
+  2  floorNum	     INTEGER PRIMARY KEY,
+  3  empID	     INTEGER NOT NULL
+  4  );
+
+Table created.
+
+SQL> --
+SQL> CREATE TABLE WorkOrder (
+  2  wID		 INTEGER PRIMARY KEY,
+  3  dateFiled		 DATE NOT NULL,
+  4  dateCompleted   DATE,
+  5  description     VARCHAR(100) NOT NULL,
+  6  empID		 INTEGER NOT NULL,
+  7  woResidentSSN   INTEGER NOT NULL,
+  8  hoursWorked	 INTEGER NOT NULL
+  9  );
+
+Table created.
+
+SQL> --
+SQL> CREATE TABLE Resident (
+  2  ssn	     INTEGER PRIMARY KEY,
+  3  firstName	     VARCHAR(20) NOT NULL,
+  4  lastName	     VARCHAR(20) NOT NULL,
+  5  sex	     VARCHAR(1) NOT NULL,
+  6  age	     INTEGER NOT NULL
+  7  );
+
+Table created.
+
+SQL> --
+SQL> CREATE TABLE Lives_at (
+  2  aptNum	     INTEGER NOT NULL,
+  3  resSSN	     INTEGER NOT NULL,
+  4  moveInDate      DATE NOT NULL,
+  5  moveOutDate     DATE,
+  6  PRIMARY KEY (aptNum, resSSN)
+  7  );
+
+Table created.
+
+SQL> --
+SQL> CREATE TABLE maintenanceHistory (
+  2  year		     INTEGER,
+  3  aptNum		 INTEGER,
+  4  description     VARCHAR(100),
+  5  PRIMARY KEY (aptNum, year)
+  6  );
+
+Table created.
+
+SQL> --
+SQL> CREATE TABLE Parts (
+  2  partType		 VARCHAR(30),
+  3  quantity		 INTEGER NOT NULL,
+  4  pricePerUnit    INTEGER NOT NULL,
+  5  wId		     INTEGER NOT NULL,
+  6  PRIMARY KEY (partType, wID),
+  7  --
+  8  CONSTRAINT wIDPART FOREIGN KEY (wId) REFERENCES
+  9  WorkOrder(wID)
+ 10  );
+
+Table created.
+
+SQL> --
+SQL> CREATE TABLE partLocations (
+  2  partDesc	     VARCHAR(30) NOT NULL,
+  3  wID	     INTEGER NOT NULL,
+  4  location	     VARCHAR(30) NOT NULL,
+  5  PRIMARY KEY (partDesc,wID,location),
+  6  --
+  7  CONSTRAINT ICPARTDEP FOREIGN KEY (partDesc,wID) REFERENCES
+  8  Parts (partType,wID)
+  9  );
+
+Table created.
+
+SQL> --
+SQL> --
+SQL> --CONSTRAINTS
+SQL> --
+SQL> /* AptUnit
+SQL> 	     Rooms has a minimum of 2, bedroom and regular room
+SQL> 	     Rent is structured this way, determined by AptUnit:
+SQL> 	      Simple (Units 1-4) - 400 (a month)
+SQL> 	      Family (Units 5-10) - 500
+SQL> 	      Deluxe (Units 11+)  - 700
+SQL> **Fulfills 2 attribute 1 row check IC**
+SQL> */
+SQL> --
+SQL> ALTER TABLE AptUnit ADD (
+  2  	     CONSTRAINT ICROOMNUM CHECK (rooms > 1),
+  3  	     CONSTRAINT ICROOMLOW CHECK (aptNum > 5 OR rent = 400),
+  4  	     CONSTRAINT ICROOMMID CHECK ((aptNum > 4 AND aptNum < 11 AND rent=500) OR (aptNum <=4 OR aptNum >= 11)),
+  5  	     CONSTRAINT ICROOMHIGH CHECK (aptNum < 11 OR rent=700),
+  6  CONSTRAINT ICFLOORFK FOREIGN KEY (floor) REFERENCES AptFloor(floorNum)DEFERRABLE INITIALLY DEFERRED
+  7  	     );
+
+Table altered.
+
+SQL> --
+SQL> /* AptFloor
+SQL> 	     Foreign key to employee who maintains that floor
+SQL> */
+SQL> ALTER TABLE AptFloor ADD
+  2  	     CONSTRAINT apt_fl_emp_fk FOREIGN KEY (empID) REFERENCES Employee(eID);
+
+Table altered.
+
+SQL> --
+SQL> /* WorkOrder
+SQL> 	     eID is a foreign key
+SQL> 	     Resident ssn is a foreign key
+SQL> */
+SQL> ALTER TABLE WorkOrder ADD (
+  2  	     CONSTRAINT wempfk FOREIGN KEY (empID) REFERENCES Employee(eID),
+  3  	     CONSTRAINT wresfk FOREIGN KEY (woResidentSSN) REFERENCES Resident(ssn)
+  4  	     );
+
+Table altered.
+
+SQL> --
+SQL> /* Resident
+SQL> 	     Every resident that files a report must be over the age of 18
+SQL> **Fulfills  IC #2, 1 attribute check**
+SQL> -Note - As the maintenance crew of the apartment, we are not concerned with the
+SQL> children of the residents. As such, even if a Resident has a child living with them,
+SQL> they will not exist in our database.
+SQL> */
+SQL> ALTER TABLE Resident ADD (
+  2  	     CONSTRAINT ICAGE CHECK (age >= 18)
+  3  	     );
+
+Table altered.
+
+SQL> --
+SQL> /* Lives_at
+SQL> 	     Foreign key
+SQL> */
+SQL> ALTER TABLE Lives_at ADD (
+  2  CONSTRAINT res_fk FOREIGN KEY (resSSN) REFERENCES Resident(ssn),
+  3  CONSTRAINT ICAPTNUMFK FOREIGN KEY (aptNum) REFERENCES AptUnit(aptNum)
+  4  );
+
+Table altered.
+
+SQL> --
+SQL> /* maintenanceHistory
+SQL> 	     Is dependent to apartment number
+SQL> */
+SQL> ALTER TABLE maintenanceHistory ADD
+  2  	     CONSTRAINT hisapt FOREIGN KEY (aptNum) REFERENCES AptUnit(aptNum);
+
+Table altered.
+
+SQL> --
+SQL> /* Parts
+SQL> 	     Quantity must be over 0
+SQL> */
+SQL> ALTER TABLE Parts ADD
+  2  	     CONSTRAINT ICNEGQUAN CHECK (quantity > 0);
+
+Table altered.
+
+SQL> --
+SQL> SET FEEDBACK OFF
+SQL> COMMIT;
+SQL> ----------------------------------------------------------
+SQL> INSERT INTO Employee VALUES (1,'Michelle', 'Vu',9999999);
+SQL> INSERT INTO Employee VALUES (2,'Alex','Porter',1111111);
+SQL> INSERT INTO Employee VALUES (3,'Allison','Bickford',2222222);
+SQL> --
+SQL> ----------------------------------------------------------
+SQL> --
+SQL> INSERT INTO Resident VALUES (11,'Harry','Potter','m',25);
+SQL> INSERT INTO Resident VALUES (12,'Ginny','Potter','f',23);
+SQL> INSERT INTO Resident VALUES (22,'Hermione','Granger','f',24);
+SQL> INSERT INTO Resident VALUES (33,'Ron','Weasley','m',25);
+SQL> INSERT INTO Resident VALUES (44,'Argus','Filch','m',68);
+SQL> --
+SQL> ----------------------------------------------------------
+SQL> --
+SQL> INSERT INTO AptUnit VALUES (1,400, 2, 1);
+SQL> INSERT INTO AptUnit VALUES (4,400, 2, 1);
+SQL> INSERT INTO AptUnit VALUES (6,500, 3, 1);
+SQL> INSERT INTO AptUnit VALUES (12,700, 6, 2);
+SQL> INSERT INTO AptUnit VALUES (13,700, 6, 3);
+SQL> --
+SQL> ---------------------------------------------------------
+SQL> INSERT INTO Lives_at VALUES (1, 11, '10-JAN-02', NULL);
+SQL> INSERT INTO Lives_at VALUES (1, 12, '11-MAR-15', NULL);
+SQL> INSERT INTO Lives_at VALUES (4, 22, '10-OCT-4', '12-AUG-17');
+SQL> INSERT INTO Lives_at VALUES (6, 22, '12-AUG-18', NULL);
+SQL> INSERT INTO Lives_at VALUES (12, 33, '13-APR-12', NULL);
+SQL> INSERT INTO Lives_at VALUES (13, 44, '13-FEB-20', NULL);
+SQL> --
+SQL> ----------------------------------------------------------
+SQL> --
+SQL> INSERT INTO AptFloor VALUES (1, 1);
+SQL> INSERT INTO AptFloor VALUES (2, 2);
+SQL> INSERT INTO AptFloor VALUES (3, 3);
+SQL> --
+SQL> --------------------------------------------------------------
+SQL> --
+SQL> INSERT INTO WorkOrder VALUES (111,'13-NOV-11','13-NOV-12','broken clock', 3, 11, 6);
+SQL> INSERT INTO WorkOrder VALUES (112,'13-NOV-11','13-NOV-12','broken chair', 3, 11, 2);
+SQL> INSERT INTO WorkOrder VALUES (113,'13-NOV-11','13-NOV-12','broken sink', 3, 11, 4);
+SQL> --
+SQL> INSERT INTO WorkOrder VALUES (222,'13-NOV-23', NULL, 'broken dishwasher', 2, 22, 4);
+SQL> INSERT INTO WorkOrder VALUES (333,'13-OCT-12','13-OCT-16','broken table', 2, 22, 10);
+SQL> INSERT INTO WorkOrder VALUES (555,'13-OCT-13','13-OCT-16','broken door handle', 2, 22, 4);
+SQL> INSERT INTO WorkOrder VALUES (777,'13-OCT-13','13-OCT-16','broken door bell', 2, 22, 3);
+SQL> --
+SQL> INSERT INTO WorkOrder VALUES (444,'13-OCT-29','13-OCT-29','clogged drain', 1, 33, 1);
+SQL> INSERT INTO WorkORder VALUES (616, '13-OCT-31', NULL, 'circuit failure', 2, 33, 14);
+SQL> ----------------------------------------------------------
+SQL> --
+SQL> INSERT INTO Parts VALUES ('screw',3,1,111);
+SQL> INSERT INTO Parts VALUES ('lightbulb', 20, 5,111);
+SQL> INSERT INTO Parts VALUES ('drain snake', 4, 10,113);
+SQL> --
+SQL> -------------------------------------------------------------
+SQL> INSERT INTO maintenanceHistory VALUES (1999,1, 'broken stove');
+SQL> INSERT INTO maintenanceHistory VALUES (2000,1, 'ant infestation');
+SQL> INSERT INTO maintenanceHistory VALUES (2000,12, 'broken clock');
+SQL> INSERT INTO maintenanceHistory VALUES (2004, 4, 'burnt fuse');
+SQL> INSERT INTO maintenanceHistory VALUES (2002, 6, 'broken outlet');
+SQL> INSERT INTO maintenanceHistory VALUES (2010, 13, 'broken air conditioning');
+SQL> INSERT INTO maintenanceHistory VALUES (2009, 6, 'replaced carpet');
+SQL> INSERT INTO maintenanceHistory VALUES (2009, 12, 'painted walls');
+SQL> --
+SQL> --
+SQL> --------------------------------------------------------------
+SQL> SET FEEDBACK ON
+SQL> COMMIT;
+
+Commit complete.
+
+SQL> SELECT * FROM Employee;
+
+       EID FIRSTNAME            LASTNAME               PHONENUM                 
+---------- -------------------- -------------------- ----------                 
+         1 Michelle             Vu                      9999999                 
+         2 Alex                 Porter                  1111111                 
+         3 Allison              Bickford                2222222                 
+
+3 rows selected.
+
+SQL> SELECT * FROM AptUnit;
+
+    APTNUM       RENT      ROOMS      FLOOR                                     
+---------- ---------- ---------- ----------                                     
+         1        400          2          1                                     
+         4        400          2          1                                     
+         6        500          3          1                                     
+        12        700          6          2                                     
+        13        700          6          3                                     
+
+5 rows selected.
+
+SQL> SELECT * FROM WorkOrder;
+
+       WID DATEFILED DATECOMPL                                                  
+---------- --------- ---------                                                  
+DESCRIPTION                                                                     
+--------------------------------------------------------------------------------
+     EMPID WORESIDENTSSN HOURSWORKED                                            
+---------- ------------- -----------                                            
+       111 13-NOV-11 13-NOV-12                                                  
+broken clock                                                                    
+         3            11           6                                            
+                                                                                
+       112 13-NOV-11 13-NOV-12                                                  
+broken chair                                                                    
+         3            11           2                                            
+
+       WID DATEFILED DATECOMPL                                                  
+---------- --------- ---------                                                  
+DESCRIPTION                                                                     
+--------------------------------------------------------------------------------
+     EMPID WORESIDENTSSN HOURSWORKED                                            
+---------- ------------- -----------                                            
+                                                                                
+       113 13-NOV-11 13-NOV-12                                                  
+broken sink                                                                     
+         3            11           4                                            
+                                                                                
+       222 13-NOV-23                                                            
+broken dishwasher                                                               
+
+       WID DATEFILED DATECOMPL                                                  
+---------- --------- ---------                                                  
+DESCRIPTION                                                                     
+--------------------------------------------------------------------------------
+     EMPID WORESIDENTSSN HOURSWORKED                                            
+---------- ------------- -----------                                            
+         2            22           4                                            
+                                                                                
+       333 13-OCT-12 13-OCT-16                                                  
+broken table                                                                    
+         2            22          10                                            
+                                                                                
+       555 13-OCT-13 13-OCT-16                                                  
+
+       WID DATEFILED DATECOMPL                                                  
+---------- --------- ---------                                                  
+DESCRIPTION                                                                     
+--------------------------------------------------------------------------------
+     EMPID WORESIDENTSSN HOURSWORKED                                            
+---------- ------------- -----------                                            
+broken door handle                                                              
+         2            22           4                                            
+                                                                                
+       777 13-OCT-13 13-OCT-16                                                  
+broken door bell                                                                
+         2            22           3                                            
+                                                                                
+
+       WID DATEFILED DATECOMPL                                                  
+---------- --------- ---------                                                  
+DESCRIPTION                                                                     
+--------------------------------------------------------------------------------
+     EMPID WORESIDENTSSN HOURSWORKED                                            
+---------- ------------- -----------                                            
+       444 13-OCT-29 13-OCT-29                                                  
+clogged drain                                                                   
+         1            33           1                                            
+                                                                                
+       616 13-OCT-31                                                            
+circuit failure                                                                 
+         2            33          14                                            
+
+       WID DATEFILED DATECOMPL                                                  
+---------- --------- ---------                                                  
+DESCRIPTION                                                                     
+--------------------------------------------------------------------------------
+     EMPID WORESIDENTSSN HOURSWORKED                                            
+---------- ------------- -----------                                            
+                                                                                
+
+9 rows selected.
+
+SQL> SELECT * FROM maintenanceHistory;
+
+      YEAR     APTNUM                                                           
+---------- ----------                                                           
+DESCRIPTION                                                                     
+--------------------------------------------------------------------------------
+      1999          1                                                           
+broken stove                                                                    
+                                                                                
+      2000          1                                                           
+ant infestation                                                                 
+                                                                                
+      2000         12                                                           
+broken clock                                                                    
+                                                                                
+
+      YEAR     APTNUM                                                           
+---------- ----------                                                           
+DESCRIPTION                                                                     
+--------------------------------------------------------------------------------
+      2004          4                                                           
+burnt fuse                                                                      
+                                                                                
+      2002          6                                                           
+broken outlet                                                                   
+                                                                                
+      2010         13                                                           
+broken air conditioning                                                         
+                                                                                
+
+      YEAR     APTNUM                                                           
+---------- ----------                                                           
+DESCRIPTION                                                                     
+--------------------------------------------------------------------------------
+      2009          6                                                           
+replaced carpet                                                                 
+                                                                                
+      2009         12                                                           
+painted walls                                                                   
+                                                                                
+
+8 rows selected.
+
+SQL> SELECT * FROM Resident;
+
+       SSN FIRSTNAME            LASTNAME             S        AGE               
+---------- -------------------- -------------------- - ----------               
+        11 Harry                Potter               m         25               
+        12 Ginny                Potter               f         23               
+        22 Hermione             Granger              f         24               
+        33 Ron                  Weasley              m         25               
+        44 Argus                Filch                m         68               
+
+5 rows selected.
+
+SQL> SELECT * FROM Parts;
+
+PARTTYPE                         QUANTITY PRICEPERUNIT        WID               
+------------------------------ ---------- ------------ ----------               
+screw                                   3            1        111               
+lightbulb                              20            5        111               
+drain snake                             4           10        113               
+
+3 rows selected.
+
+SQL> SELECT * FROM PartLocations;
+
+no rows selected
+
+SQL> SELECT * FROM Lives_at;
+
+    APTNUM     RESSSN MOVEINDAT MOVEOUTDA                                       
+---------- ---------- --------- ---------                                       
+         1         11 10-JAN-02                                                 
+         1         12 11-MAR-15                                                 
+         4         22 10-OCT-04 12-AUG-17                                       
+         6         22 12-AUG-18                                                 
+        12         33 13-APR-12                                                 
+        13         44 13-FEB-20                                                 
+
+6 rows selected.
+
+SQL> SELECT * FROM AptFloor;
+
+  FLOORNUM      EMPID                                                           
+---------- ----------                                                           
+         1          1                                                           
+         2          2                                                           
+         3          3                                                           
+
+3 rows selected.
+
+SQL> --
+SQL> --Testing the ICS
+SQL> --1 row 2 attributes--
+SQL> INSERT INTO AptUnit VALUES (3, 500, 2, 4);
+INSERT INTO AptUnit VALUES (3, 500, 2, 4)
+*
+ERROR at line 1:
+ORA-02290: check constraint (PORTERAJ.ICROOMLOW) violated 
+
+
+SQL> INSERT INTO AptUnit VALUES (15, 400, 6, 5);
+INSERT INTO AptUnit VALUES (15, 400, 6, 5)
+*
+ERROR at line 1:
+ORA-02290: check constraint (PORTERAJ.ICROOMHIGH) violated 
+
+
+SQL> INSERT INTO AptUnIt VALUES (8, 700, 3, 6);
+INSERT INTO AptUnIt VALUES (8, 700, 3, 6)
+*
+ERROR at line 1:
+ORA-02290: check constraint (PORTERAJ.ICROOMMID) violated 
+
+
+SQL> --
+SQL> --1 row--
+SQL> INSERT INTO Resident VALUES (55,'Albus','Potter','m',8);
+INSERT INTO Resident VALUES (55,'Albus','Potter','m',8)
+*
+ERROR at line 1:
+ORA-02290: check constraint (PORTERAJ.ICAGE) violated 
+
+
+SQL> --
+SQL> --Foreign Key--
+SQL> INSERT INTO Lives_at VALUES (100, 11, '10-JAN-02', NULL);
+INSERT INTO Lives_at VALUES (100, 11, '10-JAN-02', NULL)
+*
+ERROR at line 1:
+ORA-02291: integrity constraint (PORTERAJ.ICAPTNUMFK) violated - parent key not 
+found 
+
+
+SQL> --
+SQL> --Primary Key--
+SQL> INSERT INTO Employee VALUES (1,'Identity', 'Theif',6163313255);
+INSERT INTO Employee VALUES (1,'Identity', 'Theif',6163313255)
+*
+ERROR at line 1:
+ORA-00001: unique constraint (PORTERAJ.SYS_C00722663) violated 
+
+
+SQL> --
+SQL> --
+SQL> -- QUERIES
+SQL> --
+SQL> /*
+SQL> 1. A join involving at least four relations.
+SQL> 2. A self-join.
+SQL> 3. UNION, INTERSECT, and/or MINUS.
+SQL> 4. SUM, AVG, MAX, and/or MIN.
+SQL> 5. GROUP BY, HAVING, and ORDER BY, all appearing in the same query
+SQL> 6. A correlated subquery.
+SQL> 7. A non-correlated subquery.
+SQL> 8. A relational DIVISION query.
+SQL> 9. An outer join query. */
+SQL> 
+SQL> --
+SQL> --1 Join involving at least four relations--
+SQL> --
+SQL> /*Give me the employee eid, the floor they work on, the resident's ssn, and the WorkOrder Id the any resident with the last name 'Potter' filed */
+SQL> SELECT E.eID, F.floorNum, W.wID, R.ssn
+  2  FROM Employee E, AptFloor F, WorkOrder W, Resident R
+  3  WHERE E.eid=F.empID AND E.eid=W.empID AND
+  4  W.woResidentSSN=R.ssn AND R.lastName='Potter';
+
+       EID   FLOORNUM        WID        SSN                                     
+---------- ---------- ---------- ----------                                     
+         3          3        113         11                                     
+         3          3        112         11                                     
+         3          3        111         11                                     
+
+3 rows selected.
+
+SQL> --
+SQL> --2 Self Join--
+SQL> --
+SQL> /*For every resident that lives with at least one other person and find the apartment number and the last name of the eldest resident.*/
+SQL> SELECT L1.aptNum, r1.ssn, r1.lastName
+  2  FROM Resident r1, Resident r2, Lives_at L1, Lives_at L2
+  3  WHERE r1.ssn <> r2.ssn AND r1.ssn = L1.resSSN AND r2.ssn = L2.resSSN AND L1.aptNum = L2.aptNum AND r1.age > r2.age;
+
+    APTNUM        SSN LASTNAME                                                  
+---------- ---------- --------------------                                      
+         1         11 Potter                                                    
+
+1 row selected.
+
+SQL> --
+SQL> --3 Union, Intersect, and/or Minus--
+SQL> --
+SQL> /*Give me the IDs of all the employees that have worked on any project for more than 4 hours*/
+SQL> (SELECT E.eID
+  2  From Employee E)
+  3  INTERSECT
+  4  (SELECT W.empID
+  5  FROM WorkOrder W
+  6  WHERE hoursWorked > 3);
+
+       EID                                                                      
+----------                                                                      
+         2                                                                      
+         3                                                                      
+
+2 rows selected.
+
+SQL> --
+SQL> --4 Max--
+SQL> --
+SQL> /*Give the employee ID and last name of the employee that worked the most hours on any one WorkOrder*/
+SQL> SELECT E.eID, E.lastname, W.hoursWorked
+  2  FROM Employee E, WorkOrder W
+  3  WHERE E.eID=W.empID AND W.hoursWorked=
+  4  (SELECT MAX (T.hoursWorked)
+  5  FROM WorkOrder T);
+
+       EID LASTNAME             HOURSWORKED                                     
+---------- -------------------- -----------                                     
+         2 Porter                        14                                     
+
+1 row selected.
+
+SQL> --
+SQL> --5 GROUP BY, HAVING, and ORDER BY, all appearing in the same query--
+SQL> --
+SQL> /* Find the ssn of residents that have filed more than two work orders and find the total number of work orders. Order by highest count.
+SQL> */
+SQL> SELECT r.ssn, count(*)
+  2  FROM Resident r, WorkOrder w
+  3  WHERE r.ssn = w.woResidentSSN
+  4  GROUP BY r.ssn
+  5  HAVING COUNT(*) > 2
+  6  ORDER BY COUNT(*) DESC;
+
+       SSN   COUNT(*)                                                           
+---------- ----------                                                           
+        22          4                                                           
+        11          3                                                           
+
+2 rows selected.
+
+SQL> --
+SQL> --6 A correlated subquery--
+SQL> --
+SQL> /*Give me the names and IDS of all employees that have incomplete work orders*/
+SQL> SELECT E.eid, E.lastname
+  2  FROM Employee E
+  3  WHERE E.eid IN
+  4  		     (SELECT W.empID
+  5  		      FROM WorkOrder W
+  6  		      WHERE E.eid=W.empID AND W.dateCOmpleted IS NULL);
+
+       EID LASTNAME                                                             
+---------- --------------------                                                 
+         2 Porter                                                               
+
+1 row selected.
+
+SQL> --
+SQL> --
+SQL> --7 A non-correlated subquery--
+SQL> --
+SQL> /* Give me the names and ssns of all the residents that have not filed work orders who pay more than $400 in rent*/
+SQL> SELECT DISTINCT R.ssn, R.lastname, R.firstName
+  2  FROM Resident R, AptUnit A, Lives_at L
+  3  WHERE A.rent > 400 AND R.ssn = L.resSSN AND L.aptNum=A.aptNum AND R.ssn NOT IN
+  4  							     (SELECT W.woResidentSSN
+  5  							     FROM WorkOrder W);
+
+       SSN LASTNAME             FIRSTNAME                                       
+---------- -------------------- --------------------                            
+        44 Filch                Argus                                           
+
+1 row selected.
+
+SQL> --
+SQL> --8 Division query--
+SQL> --
+SQL> /*For every employee who works on every work order that is filed by Apartment 3: Find the employee ID*/
+SQL> SELECT E.eid
+  2  FROM Employee E
+  3  WHERE NOT EXISTS (
+  4  (SELECT L.resSSn
+  5  FROM Lives_at L
+  6  WHERE L.aptNum=12)
+  7  MINUS
+  8  (SELECT W.woResidentSSN
+  9  FROM WorkOrder W
+ 10  WHERE W.empID=E.eid));
+
+       EID                                                                      
+----------                                                                      
+         1                                                                      
+         2                                                                      
+
+2 rows selected.
+
+SQL> --
+SQL> --9 An outer join query--
+SQL> --
+SQL> /*Give me the ssn, first name, and last name of all the residents plus any work orders they have submitted.*/
+SQL> SELECT R.ssn, R.firstName, R.lastName, W.wID, w.hoursWorked
+  2  FROM Resident R LEFT OUTER JOIN WorkOrder W ON R.ssn=W.woResidentSSN
+  3  ORDER BY R.ssn;
+
+       SSN FIRSTNAME            LASTNAME                    WID HOURSWORKED     
+---------- -------------------- -------------------- ---------- -----------     
+        11 Harry                Potter                      113           4     
+        11 Harry                Potter                      112           2     
+        11 Harry                Potter                      111           6     
+        12 Ginny                Potter                                          
+        22 Hermione             Granger                     777           3     
+        22 Hermione             Granger                     333          10     
+        22 Hermione             Granger                     222           4     
+        22 Hermione             Granger                     555           4     
+        33 Ron                  Weasley                     616          14     
+        33 Ron                  Weasley                     444           1     
+        44 Argus                Filch                                           
+
+11 rows selected.
+
+SQL> --
+SQL> --Null--
+SQL> --
+SQL> /* Find the wID of the work order that hasn't been completed. */
+SQL> SELECT W.wID
+  2  FROM WorkOrder W
+  3  WHERE W.dateCompleted IS NULL;
+
+       WID                                                                      
+----------                                                                      
+       222                                                                      
+       616                                                                      
+
+2 rows selected.
+
+SQL> --
+SQL> --Joining 3 Tables--
+SQL> --
+SQL> /*Find the eID, wID and ssn where the resident is a female and the work order has been completed */
+SQL> SELECT e.eid,w.wid,r.ssn
+  2  FROM Employee e, WorkOrder w, Resident r
+  3  WHERE r.sex='f' AND w.dateCompleted IS NOT NULL AND w.empID=e.eid AND w.woResidentSSN=r.ssn;
+
+       EID        WID        SSN                                                
+---------- ---------- ----------                                                
+         2        333         22                                                
+         2        555         22                                                
+         2        777         22                                                
+
+3 rows selected.
+
+SQL> --
+SQL> SET ECHO OFF

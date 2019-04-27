@@ -1,0 +1,532 @@
+SQL> --
+SQL> DROP TABLE Employee CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE AptUnit CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE WorkOrder CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE maintenanceHistory CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE Resident CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE Parts CASCADE CONSTRAINTs;
+
+Table dropped.
+
+SQL> --
+SQL> CREATE TABLE Employee (
+  2  eID	     INTEGER PRIMARY KEY,
+  3  firstName	     VARCHAR(20) NOT NULL,
+  4  lastName	     VARCHAR(20) NOT NULL,
+  5  phoneNum	     INTEGER NOT NULL
+  6  );
+
+Table created.
+
+SQL> --
+SQL> CREATE TABLE AptUnit (
+  2  aptNum	     INTEGER PRIMARY KEY,
+  3  rent	     INTEGER NOT NULL,
+  4  rooms	     INTEGER NOT NULL
+  5  );
+
+Table created.
+
+SQL> --
+SQL> CREATE TABLE AptFloor (
+  2  floorNum	     INTEGER PRIMARY KEY,
+  3  empID	     INTEGER NOT NULL
+  4  );
+CREATE TABLE AptFloor (
+             *
+ERROR at line 1:
+ORA-00955: name is already used by an existing object 
+
+
+SQL> --
+SQL> CREATE TABLE WorkOrder (
+  2  wID	     INTEGER PRIMARY KEY,
+  3  dateFiled	     DATE NOT NULL,
+  4  dateCompleted   DATE,
+  5  description     VARCHAR(40) NOT NULL,
+  6  empID	     INTEGER NOT NULL,
+  7  woResidentSSN   INTEGER NOT NULL,
+  8  hoursWorked     INTEGER NOT NULL
+  9  );
+
+Table created.
+
+SQL> --
+SQL> CREATE TABLE Resident (
+  2  ssn	     INTEGER PRIMARY KEY,
+  3  firstName	     VARCHAR(20) NOT NULL,
+  4  lastName	     VARCHAR(20) NOT NULL,
+  5  sex	     VARCHAR(1) NOT NULL,
+  6  age	     INTEGER NOT NULL,
+  7  aptNum	     INTEGER NOT NULL
+  8  );
+
+Table created.
+
+SQL> --
+SQL> CREATE TABLE Lives_at (
+  2  aptNum	     INTEGER NOT NULL,
+  3  resSSN	     INTEGER NOT NULL,
+  4  rent	     INTEGER NOT NULL,
+  5  moveInDate      DATE NOT NULL,
+  6  moveOutDate     DATE,
+  7  PRIMARY KEY (aptNum, resSSN)
+  8  );
+CREATE TABLE Lives_at (
+             *
+ERROR at line 1:
+ORA-00955: name is already used by an existing object 
+
+
+SQL> --
+SQL> CREATE TABLE maintenanceHistory (
+  2  year		     INTEGER,
+  3  aptNum	     INTEGER,
+  4  description     VARCHAR(40),
+  5  PRIMARY KEY (aptNum, year)
+  6  );
+
+Table created.
+
+SQL> --
+SQL> CREATE TABLE Parts (
+  2  partType	     VARCHAR(30) PRIMARY KEY,
+  3  quantity	     INTEGER NOT NULL,
+  4  pricePerUnit    INTEGER NOT NULL
+  5  );
+
+Table created.
+
+SQL> --
+SQL> CREATE TABLE partLocations (
+  2  partDesc	     VARCHAR(30) NOT NULL,
+  3  location	     VARCHAR(30) NOT NULL,
+  4  PRIMARY KEY (partType, location),
+  5  --
+  6  CONSTRAINT ICPARTDEP FOREIGN KEY (partDesc) REFERENCES
+  7  Parts(partType)
+  8  );
+PRIMARY KEY (partType, location),
+             *
+ERROR at line 4:
+ORA-00904: "PARTTYPE": invalid identifier 
+
+
+SQL> --
+SQL> --
+SQL> --CONSTRAINTS
+SQL> --
+SQL> /* AptUnit
+SQL> 	     Rooms has a minimum of 2, bedroom and regular room
+SQL> 	     Rent is structured this way:
+SQL> 	      2 - 400 (a month)
+SQL> 	      3-4 - 500
+SQL> 	      5+  - 700
+SQL> **Fulfills 2 attribute 1 row check IC**
+SQL> */
+SQL> --
+SQL> ALTER TABLE AptUnit ADD (
+  2  	     CONSTRAINT ICROOMNUM CHECK (rooms > 1),
+  3  	     CONSTRAINT ICROOMLOW CHECK (rooms > 2 OR rent = 400),
+  4  	     CONSTRAINT ICROOMMID CHECK ((rooms > 2 AND rooms < 5 AND rent=500) OR (rooms <=2 OR rooms >= 5)),
+  5  	     CONSTRAINT ICROOMHIGH CHECK (rooms < 5 OR rent=700)
+  6  	     );
+
+Table altered.
+
+SQL> --
+SQL> /* AptFloor
+SQL> 	     Foreign key to employee who maintains that floor
+SQL> */
+SQL> ALTER TABLE AptFloor ADD
+  2  	     CONSTRAINT apt_fl_emp_fk FOREIGN KEY (empID) REFERENCES Employee(eID);
+	CONSTRAINT apt_fl_emp_fk FOREIGN KEY (empID) REFERENCES Employee(eID)
+	           *
+ERROR at line 2:
+ORA-02298: cannot validate (PORTERAJ.APT_FL_EMP_FK) - parent keys not found 
+
+
+SQL> --
+SQL> /* WorkOrder
+SQL> 	     eID is a foreign key
+SQL> 	     Resident ssn is a foreign key
+SQL> */
+SQL> ALTER TABLE WorkOrder ADD (
+  2  	     CONSTRAINT wempfk FOREIGN KEY (empID) REFERENCES Employee(eID),
+  3  	     CONSTRAINT wresfk FOREIGN KEY (woResidentSSN) REFERENCES Resident(ssn)
+  4  	     );
+
+Table altered.
+
+SQL> --
+SQL> /* Resident
+SQL> 	     Every resident that files a report must be over the age of 18
+SQL> **Fulfills  IC #2, 1 attribute check**
+SQL> -Note - As the maintenance crew of the apartment, we are not concerned with the
+SQL> children of the residents. As such, even if a Resident has a child living with them,
+SQL> they will not exist in our database.
+SQL> */
+SQL> ALTER TABLE Resident ADD (
+  2  	     CONSTRAINT ICAGE CHECK (age >= 18),
+  3  	     CONSTRAINT resapt FOREIGN KEY (aptNum) REFERENCES AptUnit(aptNum)
+  4  DEFERRABLE INITIALLY DEFERRED
+  5  	     );
+
+Table altered.
+
+SQL> --
+SQL> /* Lives_at
+SQL> 	     Foreign key
+SQL> */
+SQL> ALTER TABLE Lives_at ADD (
+  2  	     CONSTRAINT apt_fk FOREIGN KEY (aptNum) REFERENCES AptUnit(aptNum),
+  3  	     CONSTRAINT res_fk FOREIGN KEY (resSSN) REFERENCES Resident(ssn)
+  4  );
+
+Table altered.
+
+SQL> --
+SQL> /* maintenanceHistory
+SQL> 	     Is dependent to apartment number
+SQL> */
+SQL> ALTER TABLE maintenanceHistory ADD
+  2  	     CONSTRAINT hisapt FOREIGN KEY (aptNum) REFERENCES AptUnit(aptNum);
+
+Table altered.
+
+SQL> --
+SQL> /* Parts
+SQL> 	     Quantity must be over 0
+SQL> */
+SQL> ALTER TABLE Parts ADD
+  2  	     CONSTRAINT ICNEGQUAN CHECK (quantity > 0);
+
+Table altered.
+
+SQL> --
+SQL> COMMIT;
+
+Commit complete.
+
+SQL> ----------------------------------------------------------
+SQL> INSERT INTO Employee VALUES (1,'Michelle', 'Vu',9999999);
+
+1 row created.
+
+SQL> INSERT INTO Employee VALUES (2,'Alex','Porter',1111111);
+
+1 row created.
+
+SQL> INSERT INTO Employee VALUES (3,'Allison','Bickford',2222222);
+
+1 row created.
+
+SQL> SELECT * FROM Employee;
+
+       EID FIRSTNAME            LASTNAME               PHONENUM                 
+---------- -------------------- -------------------- ----------                 
+         1 Michelle             Vu                      9999999                 
+         2 Alex                 Porter                  1111111                 
+         3 Allison              Bickford                2222222                 
+
+SQL> --
+SQL> ----------------------------------------------------------
+SQL> --
+SQL> INSERT INTO Resident VALUES (11,'Harry','Potter','m',25, 1);
+
+1 row created.
+
+SQL> INSERT INTO Resident VALUES (12,'Ginny','Potter','f',23, 1);
+
+1 row created.
+
+SQL> INSERT INTO Resident VALUES (22,'Hermione','Granger','f',24, 2);
+
+1 row created.
+
+SQL> INSERT INTO Resident VALUES (33,'Ron','Weasley','m',25, 3);
+
+1 row created.
+
+SQL> INSERT INTO Resident VALUES (44,'Argus','Filch','m',68,4);
+
+1 row created.
+
+SQL> SELECT * FROM Resident;
+
+       SSN FIRSTNAME            LASTNAME             S        AGE     APTNUM    
+---------- -------------------- -------------------- - ---------- ----------    
+        11 Harry                Potter               m         25          1    
+        12 Ginny                Potter               f         23          1    
+        22 Hermione             Granger              f         24          2    
+        33 Ron                  Weasley              m         25          3    
+        44 Argus                Filch                m         68          4    
+
+SQL> ----------------------------------------------------------
+SQL> --
+SQL> INSERT INTO AptUnit VALUES (1,400, 2);
+
+1 row created.
+
+SQL> INSERT INTO AptUnit VALUES (2,500, 3);
+
+1 row created.
+
+SQL> INSERT INTO AptUnit VALUES (3,700, 6);
+
+1 row created.
+
+SQL> INSERT INTO AptUnit VALUES (4,700, 6);
+
+1 row created.
+
+SQL> SELECT * FROM AptUnit;
+
+    APTNUM       RENT      ROOMS                                                
+---------- ---------- ----------                                                
+         1        400          2                                                
+         2        500          3                                                
+         3        700          6                                                
+         4        700          6                                                
+
+SQL> --
+SQL> ---------------------------------------------------------
+SQL> INSERT INTO WorkOrder VALUES (111,'13-NOV-11','13-NOV-12','broken clock', 3, 11, 6);
+
+1 row created.
+
+SQL> INSERT INTO WorkOrder VALUES (112,'13-NOV-11','13-NOV-12','broken chair', 3, 11, 2);
+
+1 row created.
+
+SQL> INSERT INTO WorkOrder VALUES (113,'13-NOV-11','13-NOV-12','broken sink', 3, 11, 4);
+
+1 row created.
+
+SQL> --
+SQL> INSERT INTO WorkOrder VALUES (222,'13-NOV-23', NULL, 'broken dishwasher', 2, 22, 4);
+
+1 row created.
+
+SQL> INSERT INTO WorkOrder VALUES (333,'13-OCT-12','13-OCT-16','broken table', 2, 22, 10);
+
+1 row created.
+
+SQL> INSERT INTO WorkOrder VALUES (555,'13-OCT-13','13-OCT-16','broken door handle', 2, 22, 4);
+
+1 row created.
+
+SQL> INSERT INTO WorkOrder VALUES (777,'13-OCT-13','13-OCT-16','broken door bell', 2, 22, 3);
+
+1 row created.
+
+SQL> --
+SQL> INSERT INTO WorkOrder VALUES (444,'13-OCT-29','13-OCT-29','clogged drain', 1, 33, 1);
+
+1 row created.
+
+SQL> INSERT INTO WorkORder VALUES (616, '13-OCT-31', NULL, 'circuit failure', 2, 33, 14);
+
+1 row created.
+
+SQL> SELECT * FROM WorkOrder;
+
+       WID DATEFILED DATECOMPL DESCRIPTION                                      
+---------- --------- --------- ----------------------------------------         
+     EMPID WORESIDENTSSN HOURSWORKED                                            
+---------- ------------- -----------                                            
+       111 13-NOV-11 13-NOV-12 broken clock                                     
+         3            11           6                                            
+                                                                                
+       112 13-NOV-11 13-NOV-12 broken chair                                     
+         3            11           2                                            
+                                                                                
+       113 13-NOV-11 13-NOV-12 broken sink                                      
+         3            11           4                                            
+                                                                                
+
+       WID DATEFILED DATECOMPL DESCRIPTION                                      
+---------- --------- --------- ----------------------------------------         
+     EMPID WORESIDENTSSN HOURSWORKED                                            
+---------- ------------- -----------                                            
+       222 13-NOV-23           broken dishwasher                                
+         2            22           4                                            
+                                                                                
+       333 13-OCT-12 13-OCT-16 broken table                                     
+         2            22          10                                            
+                                                                                
+       555 13-OCT-13 13-OCT-16 broken door handle                               
+         2            22           4                                            
+                                                                                
+
+       WID DATEFILED DATECOMPL DESCRIPTION                                      
+---------- --------- --------- ----------------------------------------         
+     EMPID WORESIDENTSSN HOURSWORKED                                            
+---------- ------------- -----------                                            
+       777 13-OCT-13 13-OCT-16 broken door bell                                 
+         2            22           3                                            
+                                                                                
+       444 13-OCT-29 13-OCT-29 clogged drain                                    
+         1            33           1                                            
+                                                                                
+       616 13-OCT-31           circuit failure                                  
+         2            33          14                                            
+                                                                                
+
+9 rows selected.
+
+SQL> ----------------------------------------------------------
+SQL> --
+SQL> INSERT INTO Parts VALUES ('screw',3,1);
+
+1 row created.
+
+SQL> INSERT INTO Parts VALUES ('lightbulb', 20, 5);
+
+1 row created.
+
+SQL> INSERT INTO Parts VALUES ('drain snake', 4, 10);
+
+1 row created.
+
+SQL> SELECT * FROM Parts;
+
+PARTTYPE                         QUANTITY PRICEPERUNIT                          
+------------------------------ ---------- ------------                          
+screw                                   3            1                          
+lightbulb                              20            5                          
+drain snake                             4           10                          
+
+SQL> --
+SQL> -------------------------------------------------------------
+SQL> INSERT INTO maintenanceHistory VALUES (1999,2, 'broken stove');
+
+1 row created.
+
+SQL> INSERT INTO maintenanceHistory VALUES (1999,2, 'ant infestation');
+INSERT INTO maintenanceHistory VALUES (1999,2, 'ant infestation')
+*
+ERROR at line 1:
+ORA-00001: unique constraint (PORTERAJ.SYS_C00710218) violated 
+
+
+SQL> INSERT INTO maintenanceHistory VALUES (1999,3, 'broken clock');
+
+1 row created.
+
+SQL> SELECT * FROM maintenanceHistory;
+
+      YEAR     APTNUM DESCRIPTION                                               
+---------- ---------- ----------------------------------------                  
+      1999          2 broken stove                                              
+      1999          3 broken clock                                              
+
+SQL> --
+SQL> --------------------------------------------------------------
+SQL> INSERT INTO AptFloor VALUES (1, 1);
+INSERT INTO AptFloor VALUES (1, 1)
+*
+ERROR at line 1:
+ORA-00001: unique constraint (PORTERAJ.SYS_C00705855) violated 
+
+
+SQL> INSERT INTO AptFloor VALUES (2, 2);
+INSERT INTO AptFloor VALUES (2, 2)
+*
+ERROR at line 1:
+ORA-00001: unique constraint (PORTERAJ.SYS_C00705855) violated 
+
+
+SQL> INSERT INTO AptFloor VALUES (3, 3);
+INSERT INTO AptFloor VALUES (3, 3)
+*
+ERROR at line 1:
+ORA-00001: unique constraint (PORTERAJ.SYS_C00705855) violated 
+
+
+SQL> SELECT * FROM AptFloor;
+
+  FLOORNUM      EMPID                                                           
+---------- ----------                                                           
+         1          1                                                           
+         2          2                                                           
+         3          3                                                           
+
+SQL> --
+SQL> --------------------------------------------------------------
+SQL> COMMIT;
+
+Commit complete.
+
+SQL> --Testing the ICS
+SQL> --1 row 2 attributes--
+SQL> INSERT INTO AptUnit VALUES (5, 500, 2);
+INSERT INTO AptUnit VALUES (5, 500, 2)
+*
+ERROR at line 1:
+ORA-02290: check constraint (PORTERAJ.ICROOMLOW) violated 
+
+
+SQL> INSERT INTO AptUnit VALUES (6, 400, 6);
+INSERT INTO AptUnit VALUES (6, 400, 6)
+*
+ERROR at line 1:
+ORA-02290: check constraint (PORTERAJ.ICROOMHIGH) violated 
+
+
+SQL> INSERT INTO AptUnIt VALUES (7, 700, 3);
+INSERT INTO AptUnIt VALUES (7, 700, 3)
+*
+ERROR at line 1:
+ORA-02290: check constraint (PORTERAJ.ICROOMMID) violated 
+
+
+SQL> --
+SQL> --1 row--
+SQL> INSERT INTO Resident VALUES (55,'Albus','Potter','m',8,5);
+INSERT INTO Resident VALUES (55,'Albus','Potter','m',8,5)
+*
+ERROR at line 1:
+ORA-02290: check constraint (PORTERAJ.ICAGE) violated 
+
+
+SQL> --
+SQL> --Foreign Key--
+SQL> INSERT INTO Resident VALUES (66,'Alastor','Moody','m',50,12);
+
+1 row created.
+
+SQL> COMMIT;
+COMMIT
+*
+ERROR at line 1:
+ORA-02091: transaction rolled back 
+ORA-02291: integrity constraint (PORTERAJ.RESAPT) violated - parent key not 
+found 
+
+
+SQL> --
+SQL> --Primary Key--
+SQL> INSERT INTO Employee VALUES (1,'Identity', 'Theif',6163313255);
+INSERT INTO Employee VALUES (1,'Identity', 'Theif',6163313255)
+*
+ERROR at line 1:
+ORA-00001: unique constraint (PORTERAJ.SYS_C00710202) violated 
+
+
+SQL> SET ECHO OFF

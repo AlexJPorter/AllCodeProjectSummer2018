@@ -1,0 +1,133 @@
+SQL> 
+SQL> --
+SQL> -- SELF JOIN --
+SQL> --
+SQL> /*
+SQL> For every resident that lives with at least one other person and find the apartment number and the last name of the eldest resident.
+SQL> */
+SQL> 
+SQL> SELECT a.aptNum, r.ssn, r.lastName
+  2  FROM Resident r, Resident r2, AptUnit a
+  3  WHERE r.aptNum = r2.aptNum AND a.aptNum = r.aptNum AND r.age > r2.age;
+
+    APTNUM        SSN LASTNAME                                                  
+---------- ---------- --------------------                                      
+         1         11 Potter                                                    
+
+SQL> 
+SQL> /*
+SQL> 1. A join involving at least four relations.
+SQL> 2. A self-join.
+SQL> 3. UNION, INTERSECT, and/or MINUS.
+SQL> 4. SUM, AVG, MAX, and/or MIN.
+SQL> 5. GROUP BY, HAVING, and ORDER BY, all appearing in the same query
+SQL> 6. A correlated subquery.
+SQL> 7. A non-correlated subquery.
+SQL> 8. A relational DIVISION query.
+SQL> 9. An outer join query.
+SQL> */
+SQL> 
+SQL> -- 4 Max --
+SQL> /*Give the employee ID and last name of the employee that worked the most hours on any one WorkOrder*/
+SQL> SELECT E.eID, E.lastname, W.hoursWorked
+  2  FROM Employee E, WorkOrder W
+  3  WHERE E.eID=W.empID AND W.hoursWorked=
+  4  (SELECT MAX (T.hoursWorked)
+  5  FROM WorkOrder T);
+
+       EID LASTNAME             HOURSWORKED                                     
+---------- -------------------- -----------                                     
+         2 Porter                        14                                     
+
+SQL> 
+SQL> -- 5 --
+SQL> /* Find the ssn of residents that have filed more than two work orders and find the total number of work orders. Order by highest count.
+SQL> */
+SQL> SELECT r.ssn, count(*)
+  2  FROM Resident r, WorkOrder w
+  3  WHERE r.ssn = w.woResidentSSN
+  4  GROUP BY r.ssn
+  5  HAVING COUNT(*) > 2
+  6  ORDER BY COUNT(*) DESC;
+
+       SSN   COUNT(*)                                                           
+---------- ----------                                                           
+        22          4                                                           
+        11          3                                                           
+
+SQL> 
+SQL> -- 7 --
+SQL> /* Give me the names and ssns of all the residents that have not filed work orders who pay more than $400 in rent*/
+SQL> SELECT DISTINCT R.ssn, R.lastname, R.firstName
+  2  FROM Resident R, AptUnit A
+  3  WHERE A.rent > 400 AND R.aptNum=A.aptNum AND R.ssn NOT IN
+  4  							     (SELECT W.woResidentSSN
+  5  							     FROM WorkOrder W);
+
+       SSN LASTNAME             FIRSTNAME                                       
+---------- -------------------- --------------------                            
+        44 Filch                Argus                                           
+
+SQL> -- 6 --
+SQL> /*Give me the names and IDS of all employees that have incomplete work orders*/
+SQL> SELECT E.eid, E.lastname
+  2  FROM Employee E
+  3  WHERE E.eid IN
+  4  		     (SELECT W.empID
+  5  		      FROM WorkOrder W
+  6  		      WHERE E.eid=W.empID AND W.dateCOmpleted IS NULL);
+
+       EID LASTNAME                                                             
+---------- --------------------                                                 
+         2 Porter                                                               
+
+SQL> --9--
+SQL> /*Give me the ssn, first name, and last name of all the residents plus any work orders they have submitted.*/
+SQL> SELECT R.ssn, R.firstName, R.lastName, W.wID, w.hoursWorked
+  2  FROM Resident R LEFT OUTER JOIN WorkOrder W ON R.ssn=W.woResidentSSN
+  3  ORDER BY R.ssn;
+
+       SSN FIRSTNAME            LASTNAME                    WID HOURSWORKED     
+---------- -------------------- -------------------- ---------- -----------     
+        11 Harry                Potter                      113           4     
+        11 Harry                Potter                      112           2     
+        11 Harry                Potter                      111           6     
+        12 Ginny                Potter                                          
+        22 Hermione             Granger                     777           3     
+        22 Hermione             Granger                     333          10     
+        22 Hermione             Granger                     222           4     
+        22 Hermione             Granger                     555           4     
+        33 Ron                  Weasley                     616          14     
+        33 Ron                  Weasley                     444           1     
+        44 Argus                Filch                                           
+
+11 rows selected.
+
+SQL> --1--
+SQL> /*Give me the employee eid, the floor they work on, the resident's ssn, and the WorkOrder Id the any resident with the last name 'Potter' filed */
+SQL> SELECT E.eid, F.floorNum, W.wID, R.ssn
+  2  FROM Employee E, AptFloor F, WorkOrder W, Resident R
+  3  WHERE E.eid=F.empID AND F.empID=W.empID AND W.woResidentSSN=R.ssn AND R.lastName = 'Potter';
+
+       EID   FLOORNUM        WID        SSN                                     
+---------- ---------- ---------- ----------                                     
+         3          3        113         11                                     
+         3          3        112         11                                     
+         3          3        111         11                                     
+
+SQL> --3--
+SQL> /*Give me the IDs of all the employees that have worked on any project for more than 4 hours*/
+SQL> (SELECT E.eID
+  2  From Employee E)
+  3  INTERSECT
+  4  (SELECT W.empID
+  5  FROM WorkOrder W
+  6  WHERE hoursWorked > 3);
+
+       EID                                                                      
+----------                                                                      
+         2                                                                      
+         3                                                                      
+
+SQL> 
+SQL> SET ECHO OFF
